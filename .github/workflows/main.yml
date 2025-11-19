@@ -1,52 +1,41 @@
-name: Kali Tailscale RDP
+name: Browser Desktop via Tailscale Funnel
 
 on:
   workflow_dispatch:
 
 jobs:
-  rdp:
+  desktop:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Update system
-        run: sudo apt update
+      - name: Update packages
+        run: sudo apt update -y
 
-      # -------------------------
-      # 1. Install Tailscale
-      # -------------------------
+      # 1️⃣  Install Tailscale
       - name: Install Tailscale
-        run: |
-          curl -fsSL https://tailscale.com/install.sh | sh
+        run: curl -fsSL https://tailscale.com/install.sh | sh
 
       - name: Authenticate Tailscale
-        run: sudo tailscale up --authkey=${{ secrets.TS_KEY }} --hostname=GitHub-RDP
+        run: sudo tailscale up --authkey=${{ secrets.TS_KEY }} --hostname=Browser-Desktop
 
-      - name: Show Tailscale IP
-        run: hostname -I
-
-      # -------------------------
-      # 2. Install XFCE Desktop + RDP
-      # -------------------------
-      - name: Install Desktop + xRDP
+      # 2️⃣  Desktop & VNC
+      - name: Install XFCE + VNC stack
         run: |
-          sudo apt install -y xfce4 xrdp
-          sudo systemctl enable xrdp
-          sudo systemctl start xrdp
+          sudo apt install -y xfce4 x11vnc novnc websockify
+          # start a display
+          export DISPLAY=:0
+          sudo x11vnc -create -forever -shared -rfbport 5900 &
+          # bridge VNC to WebSockets
+          sudo websockify --web=/usr/share/novnc/ 8080 localhost:5900 &
 
-      # -------------------------
-      # 3. Add Kali Repos + Tools
-      # -------------------------
-      - name: Add Kali Repository
+      # 3️⃣  Tailscale Funnel setup
+      - name: Enable Tailscale Funnel
         run: |
-          echo "deb http://http.kali.org/kali kali-rolling main contrib non-free non-free-firmware" | sudo tee /etc/apt/sources.list.d/kali.list
-          sudo apt update
+          sudo tailscale serve --https 443 localhost:8080
+          sudo tailscale funnel 443 on
+          echo "Your public URL (when running) will look like:"
+          tailscale serve status
 
-      - name: Install Kali Tools
-        run: |
-          sudo apt install -y kali-linux-top10
-
-      # -------------------------
-      # 4. Keep Runner Alive
-      # -------------------------
-      - name: Keep session running
+      # 4️⃣  Keep Runner Alive
+      - name: Keep session alive
         run: sleep 999999
