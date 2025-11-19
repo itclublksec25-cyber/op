@@ -1,0 +1,52 @@
+name: Kali Tailscale RDP
+
+on:
+  workflow_dispatch:
+
+jobs:
+  rdp:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Update system
+        run: sudo apt update
+
+      # -------------------------
+      # 1. Install Tailscale
+      # -------------------------
+      - name: Install Tailscale
+        run: |
+          curl -fsSL https://tailscale.com/install.sh | sh
+
+      - name: Authenticate Tailscale
+        run: sudo tailscale up --authkey=${{ secrets.TS_KEY }} --hostname=GitHub-RDP
+
+      - name: Show Tailscale IP
+        run: hostname -I
+
+      # -------------------------
+      # 2. Install XFCE Desktop + RDP
+      # -------------------------
+      - name: Install Desktop + xRDP
+        run: |
+          sudo apt install -y xfce4 xrdp
+          sudo systemctl enable xrdp
+          sudo systemctl start xrdp
+
+      # -------------------------
+      # 3. Add Kali Repos + Tools
+      # -------------------------
+      - name: Add Kali Repository
+        run: |
+          echo "deb http://http.kali.org/kali kali-rolling main contrib non-free non-free-firmware" | sudo tee /etc/apt/sources.list.d/kali.list
+          sudo apt update
+
+      - name: Install Kali Tools
+        run: |
+          sudo apt install -y kali-linux-top10
+
+      # -------------------------
+      # 4. Keep Runner Alive
+      # -------------------------
+      - name: Keep session running
+        run: sleep 999999
