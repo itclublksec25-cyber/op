@@ -18,24 +18,34 @@ jobs:
       - name: Authenticate Tailscale
         run: sudo tailscale up --authkey=${{ secrets.TS_KEY }} --hostname=Browser-Desktop
 
-      # 2️⃣  Desktop & VNC
+      # 2️⃣  Install XFCE + VNC stack + noVNC
       - name: Install XFCE + VNC stack
         run: |
           sudo apt install -y xfce4 x11vnc novnc websockify
           # start a display
           export DISPLAY=:0
           sudo x11vnc -create -forever -shared -rfbport 5900 &
+          sleep 5  # give it time to start VNC
           # bridge VNC to WebSockets
           sudo websockify --web=/usr/share/novnc/ 8080 localhost:5900 &
+          sleep 5  # wait for websockify to start
+          ps aux | grep -i websockify  # check if websockify is running
 
-      # 3️⃣  Tailscale Funnel setup
-      - name: Enable Tailscale Funnel
+      # 3️⃣  Enable Tailscale Funnel + logs
+      - name: Enable Tailscale Funnel (HTTPS)
         run: |
           sudo tailscale serve --https 443 localhost:8080
           sudo tailscale funnel 443 on
-          echo "Your public URL (when running) will look like:"
-          tailscale serve status
+          sleep 2  # Give time for Funnel to initiate
+          tailscale serve status  # Check the serve status
 
-      # 4️⃣  Keep Runner Alive
+      # 4️⃣  Allow traffic to ports 8080 & 443 (firewall)
+      - name: Allow traffic to 8080 & 443
+        run: |
+          sudo ufw allow 8080
+          sudo ufw allow 443
+          sudo ufw enable
+
+      # 5️⃣  Keep Runner Alive
       - name: Keep session alive
         run: sleep 999999
