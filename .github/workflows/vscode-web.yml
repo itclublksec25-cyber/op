@@ -1,0 +1,38 @@
+name: VSCode Web Runner
+on: workflow_dispatch
+
+jobs:
+  devbox:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+
+    steps:
+    - name: Install code-server
+      run: |
+        curl -fsSL https://code-server.dev/install.sh | sh
+        mkdir -p /home/runner/.config/code-server
+        cat <<EOF > /home/runner/.config/code-server/config.yaml
+bind-addr: 0.0.0.0:8080
+auth: none
+cert: false
+EOF
+        sudo chown -R runner:runner /home/runner/.config
+
+    - name: Start code-server
+      run: |
+        nohup /usr/bin/code-server --config /home/runner/.config/code-server/config.yaml >/dev/null 2>&1 &
+
+    - name: Install Tailscale
+      run: |
+        curl -fsSL https://tailscale.com/install.sh | sh
+        sudo tailscale up --authkey=${{ secrets.TSKEY }} --hostname=vscode-runner
+
+    - name: Enable Funnel
+      run: |
+        sudo tailscale funnel 8080
+        tailscale funnel status
+
+    - name: Keep Alive
+      run: |
+        echo "VSCode Web is running..."
+        sleep infinity
