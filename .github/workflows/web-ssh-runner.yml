@@ -9,26 +9,24 @@ jobs:
     timeout-minutes: 360
 
     steps:
-    - name: Update system
-      run: sudo apt update
-
-    - name: Install ttyd (web terminal)
+    - name: Install ttyd
       run: |
+        sudo apt update
         sudo apt install -y ttyd
 
-    - name: Start ttyd on port 7681
+    - name: Start ttyd (no login)
       run: |
-        nohup ttyd -p 7681 bash &
+        nohup ttyd -p 7681 -i /bin/bash &
 
     - name: Install Tailscale
       run: |
         curl -fsSL https://tailscale.com/install.sh | sh
         sudo tailscale up --authkey=${{ secrets.TSKEY }} --hostname=webssh-runner
 
-    - name: Enable Funnel for web SSH
+    - name: Enable funnel
       run: |
         sudo tailscale funnel 7681
         tailscale funnel status
 
-    - name: Keep session alive
+    - name: Keep alive
       run: sleep infinity
