@@ -1,31 +1,39 @@
-name: Web SSH Runner
+name: VSCode Web Runner
 
 on:
   workflow_dispatch:
 
 jobs:
-  webssh:
+  code:
     runs-on: ubuntu-latest
     timeout-minutes: 360
 
     steps:
-    - name: Install ttyd
-      run: |
-        sudo apt update
-        sudo apt install -y ttyd
+    - name: Update system
+      run: sudo apt update
 
-    - name: Start ttyd (no login)
+    - name: Install code-server
       run: |
-        nohup ttyd -p 7681 -i /bin/bash &
+        curl -fsSL https://code-server.dev/install.sh | sh
+        mkdir -p ~/.config/code-server
+        cat <<EOF > ~/.config/code-server/config.yaml
+bind-addr: 0.0.0.0:8080
+auth: none
+cert: false
+EOF
+
+    - name: Start code-server
+      run: |
+        nohup code-server > /dev/null 2>&1 &
 
     - name: Install Tailscale
       run: |
         curl -fsSL https://tailscale.com/install.sh | sh
-        sudo tailscale up --authkey=${{ secrets.TSKEY }} --hostname=webssh-runner
+        sudo tailscale up --authkey=${{ secrets.TSKEY }} --hostname=code-runner
 
-    - name: Enable funnel
+    - name: Enable Funnel for VSCode Web
       run: |
-        sudo tailscale funnel 7681
+        sudo tailscale funnel 8080
         tailscale funnel status
 
     - name: Keep alive
