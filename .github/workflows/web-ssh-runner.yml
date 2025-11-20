@@ -1,0 +1,34 @@
+name: Web SSH Runner
+
+on:
+  workflow_dispatch:
+
+jobs:
+  webssh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+
+    steps:
+    - name: Update system
+      run: sudo apt update
+
+    - name: Install ttyd (web terminal)
+      run: |
+        sudo apt install -y ttyd
+
+    - name: Start ttyd on port 7681
+      run: |
+        nohup ttyd -p 7681 bash &
+
+    - name: Install Tailscale
+      run: |
+        curl -fsSL https://tailscale.com/install.sh | sh
+        sudo tailscale up --authkey=${{ secrets.TSKEY }} --hostname=webssh-runner
+
+    - name: Enable Funnel for web SSH
+      run: |
+        sudo tailscale funnel 7681
+        tailscale funnel status
+
+    - name: Keep session alive
+      run: sleep infinity
